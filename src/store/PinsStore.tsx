@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { initDb, fetchPins, insertPin, updatePinRow, deleteAllPins, PinRow } from "../db/db";
 
 export type Pin = {
   id: string;
@@ -7,36 +8,105 @@ export type Pin = {
   createdAt: number;
   memo?: string;
   photoUri?: string; // 다음 단계(사진) 대비
+  region1?: string; // 시/도
+  region2?: string; // 시/군/구
+  region3?: string; // 동/읍/면
+  formattedAddress?: string; // 풀 주소(옵션)
 };
 
 type PinsContextValue = {
   pins: Pin[];
-  addPin: (pin: Pin) => void;
-  updatePin: (id: string, patch: Partial<Pin>) => void;
-  clearPins: () => void;
+  isReady: boolean;
+  addPin: (pin: Pin) => Promise<void>;
+  updatePin: (id: string, patch: Partial<Pin>) => Promise<void>;
+  clearPins: () => Promise<void>;
   getPin: (id: string) => Pin | undefined;
 };
 
 const PinsContext = createContext<PinsContextValue | null>(null);
 
+function rowToPin(r: PinRow): Pin {
+  return {
+    id: r.id,
+    lat: r.lat,
+    lng: r.lng,
+    createdAt: r.createdAt,
+    memo: r.memo ?? "",
+    photoUri: r.photoUri ?? undefined,
+    region1: r.region1 ?? undefined,
+    region2: r.region2 ?? undefined,
+    region3: r.region3 ?? undefined,
+    formattedAddress: r.formattedAddress ?? undefined,
+  };
+}
+
+function pinToRow(p: Pin): PinRow {
+  return {
+    id: p.id,
+    lat: p.lat,
+    lng: p.lng,
+    createdAt: p.createdAt,
+    memo: p.memo ?? "",
+    photoUri: p.photoUri ?? null,
+    region1: p.region1 ?? null,
+    region2: p.region2 ?? null,
+    region3: p.region3 ?? null,
+    formattedAddress: p.formattedAddress ?? null,
+  };
+}
+
 export function PinsProvider({ children }: { children: React.ReactNode }) {
   const [pins, setPins] = useState<Pin[]>([]);
+  const [isReady, setIsReady] = useState(false);
 
-  const addPin = (pin: Pin) => {
+    useEffect(() => {
+    (async () => {
+      await initDb();
+      const rows = await fetchPins();
+      setPins(rows.map(rowToPin));
+      setIsReady(true);
+    })().catch((e) => {
+      console.log("DB init/load failed:", e);
+      setIsReady(true); // 일단 앱은 뜨게
+    });
+  }, []);
+
+  
+  const addPin = async (pin: Pin) => {
     setPins((prev) => [pin, ...prev]);
+    await insertPin(pinToRow(pin));
   };
 
-  const updatePin = (id: string, patch: Partial<Pin>) => {
+  const updatePin = async (id: string, patch: Partial<Pin>) => {
     setPins((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+    // DB patch 변환
+    const dbPatch: Partial<PinRow> = {};
+    if (patch.memo !== undefined) dbPatch.memo = patch.memo;
+    if (patch.photoUri !== undefined) dbPatch.photoUri = patch.photoUri ?? null;
+    if (patch.lat !== undefined) dbPatch.lat = patch.lat;
+    if (patch.lng !== undefined) dbPatch.lng = patch.lng;
+    if (patch.createdAt !== undefined) dbPatch.createdAt = patch.createdAt;
+    
+    // 추가된 주소 필드 매핑
+    if (patch.region1 !== undefined) dbPatch.region1 = patch.region1 ?? null;
+    if (patch.region2 !== undefined) dbPatch.region2 = patch.region2 ?? null;
+    if (patch.region3 !== undefined) dbPatch.region3 = patch.region3 ?? null;
+    if (patch.formattedAddress !== undefined) dbPatch.formattedAddress = patch.formattedAddress ?? null;
+
+    await updatePinRow(id, dbPatch);
   };
 
-  const clearPins = () => setPins([]);
+  const clearPins = async () => {
+    setPins([]);
+    await deleteAllPins();
+  };
 
   const getPin = (id: string) => pins.find((p) => p.id === id);
 
   const value = useMemo(
-    () => ({ pins, addPin, updatePin, clearPins, getPin }),
-    [pins]
+    () => ({ pins, isReady, addPin, updatePin, clearPins, getPin }),
+    [pins, isReady]
   );
 
   return <PinsContext.Provider value={value}>{children}</PinsContext.Provider>;

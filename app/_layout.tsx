@@ -5,8 +5,8 @@ export default function RootLayout() {
   return (
     <PinsProvider>
       <Stack>
-        <Stack.Screen name="index" options={{ title: "MemoryMap" }} />
-        <Stack.Screen name="pin/[id]" options={{ title: "Pin" }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="pin/[id]" options={{ title: "" }} />
       </Stack>
     </PinsProvider>
   );
