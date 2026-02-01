@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert, Platform, Modal } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert, Platform, Modal, FlatList, Dimensions } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePins } from "../../src/store/PinsStore";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import ImageViewing from "react-native-image-viewing";
 import { File, Directory, Paths } from "expo-file-system";
 
 async function pickAndStorePhoto(pinId: string) {
@@ -47,23 +48,30 @@ export default function PinDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getPin, updatePin } = usePins();
+  const { getPin, updatePin, addPinPhoto, deletePinPhoto } = usePins();
 
   const pin = id ? getPin(id) : undefined;
 
   const [memo, setMemo] = useState("");
-  const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     setMemo(pin?.memo ?? "");
-    setPhotoUri(pin?.photoUri);
+  }, [pin?.memo]);
+
+  useEffect(() => {
+    setPhotos(pin?.photos ?? []);
+  }, [pin?.photos]);
+
+  useEffect(() => {
     if (pin?.createdAt) {
       setDate(new Date(pin.createdAt));
     }
-  }, [pin?.memo, pin?.photoUri, pin?.createdAt]);
+  }, [pin?.createdAt]);
 
   if (!id) {
     return (
@@ -82,12 +90,17 @@ export default function PinDetail() {
   }
 
   const onAddPhoto = async () => {
+    if (photos.length >= 3) {
+      Alert.alert("알림", "사진은 최대 3장까지 추가할 수 있어요.");
+      return;
+    }
     try {
       const stored = await pickAndStorePhoto(id);
       if (!stored) return;
 
-      setPhotoUri(stored);
-      updatePin(id, { photoUri: stored });
+      // addPinPhoto가 내부 setPins로 상태를 업데이트하므로
+      // useEffect가 돌면서 photos 상태도 동기화됨.
+      await addPinPhoto(id, stored);
     } catch (e) {
       Alert.alert("사진 추가 실패", "다시 시도해줘");
       console.log(e);
@@ -131,21 +144,60 @@ export default function PinDetail() {
       )}
 
       <View style={styles.card}>
-        {/* <Text style={styles.label}>Photo</Text> */}
+        {/* Carousel UI */}
+        <FlatList
+          data={[...photos, ...(photos.length < 3 ? ["ADD_BUTTON"] : [])]}
+          horizontal
+          // pagingEnabled // 제거: 아이템 크기와 컨테이너 크기가 다르므로 snapToInterval 사용
+          snapToInterval={290} // item width(280) + marginRight(10)
+          snapToAlignment="start"
+          decelerationRate="fast"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 20 }} // 마지막 아이템 여백 확보
+          keyExtractor={(item, index) => (item === "ADD_BUTTON" ? "add-btn" : item)}
+          renderItem={({ item, index }) => {
+            if (item === "ADD_BUTTON") {
+              return (
+                <Pressable style={styles.carouselItem} onPress={onAddPhoto}>
+                  <View style={styles.addPhotoPlaceholder}>
+                    <Text style={{ fontSize: 32 }}>+</Text>
+                    <Text style={{ marginTop: 8 }}>사진 추가</Text>
+                    <Text style={{ fontSize: 12, opacity: 0.5 }}>
+                      {photos.length}/3
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            }
 
-        {photoUri ? (
-          <Pressable onPress={() => setIsViewerOpen(true)}>
-            <Image source={{ uri: photoUri }} style={styles.photo} />
-          </Pressable>
-        ) : (
-          <Text style={{ opacity: 0.6 }}>아직 사진이 없어요</Text>
-        )}
-
-        <Pressable style={styles.photoBtn} onPress={onAddPhoto}>
-          <Text style={{ color: "white", fontWeight: "700" }}>
-            {photoUri ? "Change Photo" : "Add Photo"}
-          </Text>
-        </Pressable>
+            return (
+              <Pressable
+                style={styles.carouselItem}
+                onPress={() => {
+                  setCurrentImageIndex(index);
+                  setIsViewerOpen(true);
+                }}
+                onLongPress={() => {
+                  Alert.alert("사진 삭제", "이 사진을 삭제할까요?", [
+                    { text: "취소", style: "cancel" },
+                    {
+                      text: "삭제",
+                      style: "destructive",
+                      onPress: () => deletePinPhoto(id, item),
+                    },
+                  ]);
+                }}
+              >
+                <Image source={{ uri: item }} style={styles.carouselImage} />
+                <View style={styles.pageIndicator}>
+                  <Text style={styles.pageIndicatorText}>
+                    {index + 1}/{photos.length}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
       </View>
 
       <View style={styles.card}>
@@ -163,27 +215,13 @@ export default function PinDetail() {
         <Text style={styles.saveText}>Save</Text>
       </Pressable>
 
-      <Modal
+      {/* 이미지 뷰어 (줌/스와이프 지원) */}
+      <ImageViewing
+        images={photos.map((uri) => ({ uri }))}
+        imageIndex={currentImageIndex}
         visible={isViewerOpen}
-        transparent={true}
-        animationType="fade"
         onRequestClose={() => setIsViewerOpen(false)}
-      >
-        <View style={styles.viewerContainer}>
-          <Pressable
-            style={[styles.viewerClose, { top: insets.top + 20 }]}
-            onPress={() => setIsViewerOpen(false)}
-          >
-            <Text style={styles.viewerCloseText}>닫기</Text>
-          </Pressable>
-
-          <Image
-            source={{ uri: photoUri }}
-            style={styles.viewerImage}
-            resizeMode="contain"
-          />
-        </View>
-      </Modal>
+      />
     </View>
   );
 }
@@ -197,12 +235,39 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10 },
   label: { fontWeight: "600" },
 
-  photo: { width: "100%", height: 220, borderRadius: 12, backgroundColor: "#eee" },
-  photoBtn: {
-    backgroundColor: "black",
-    paddingVertical: 12,
+  carouselItem: {
+    width: 280,
+    height: 220,
+    marginRight: 10,
     borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "#f0f0f0",
+  },
+  carouselImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  addPhotoPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#e0e0e0",
+  },
+  pageIndicator: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  pageIndicatorText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   input: {
@@ -221,25 +286,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveText: { color: "white", fontWeight: "700", fontSize: 16 },
-
-  viewerContainer: {
-    flex: 1,
-    backgroundColor: "black",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  viewerImage: {
-    width: "100%",
-    height: "100%",
-  },
-  viewerClose: {
-    position: "absolute",
-    right: 16,
-    zIndex: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.15)",
-  },
-  viewerCloseText: { color: "white", fontWeight: "700" },
 });

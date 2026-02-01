@@ -44,6 +44,7 @@ export default function Home() {
       lat: latitude,
       lng: longitude,
       createdAt: Date.now(),
+      photos: [],
     };
 
     addPin(newPin).catch(console.log);
@@ -72,7 +73,7 @@ export default function Home() {
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <MapView style={styles.map} initialRegion={initialRegion} onLongPress={onLongPress}>
         {pins.map((p) => {
-          const hasPhoto = !!p.photoUri;
+          const hasPhoto = p.photos && p.photos.length > 0;
           const hasMemo = !!(p.memo && p.memo.trim().length > 0);
           const badgeText =
             (hasPhoto ? "🖼️" : "") + (hasMemo ? "✍️" : "");
