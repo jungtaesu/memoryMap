@@ -92,11 +92,11 @@ export async function fetchAllPhotos(): Promise<PhotoRow[]> {
   return await database.getAllAsync<PhotoRow>(`SELECT * FROM pin_photos ORDER BY createdAt ASC;`);
 }
 
-export async function insertPhoto(pinId: string, uri: string): Promise<void> {
+export async function insertPhoto(pinId: string, uri: string, createdAt: number = Date.now()): Promise<void> {
   const database = await getDb();
   await database.runAsync(
     `INSERT INTO pin_photos (pinId, uri, createdAt) VALUES (?, ?, ?);`,
-    [pinId, uri, Date.now()]
+    [pinId, uri, createdAt]
   );
 }
 
@@ -149,7 +149,10 @@ export async function updatePinRow(id: string, patch: Partial<PinRow>): Promise<
 
 export async function deleteAllPins(): Promise<void> {
   const database = await getDb();
-  await database.runAsync(`DELETE FROM user_version;`); // (예시)
   await database.runAsync(`DELETE FROM pins;`);
+}
+
+export async function deleteAllPhotos(): Promise<void> {
+  const database = await getDb();
   await database.runAsync(`DELETE FROM pin_photos;`);
 }

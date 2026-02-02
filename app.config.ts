@@ -15,12 +15,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: "#ffffff"
   },
   ios: {
+    bundleIdentifier: "com.taesujung.memorymap",
     supportsTablet: true,
     config: {
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
     }
   },
   android: {
+    package: "com.taesujung.memorymap",
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff"
@@ -40,4 +42,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-sqlite",
     "@react-native-community/datetimepicker"
   ],
+  extra: {
+    eas: {
+      projectId: "b4a46495-5b12-425c-870e-aba14e9a758d"
+    }
+  }
 });

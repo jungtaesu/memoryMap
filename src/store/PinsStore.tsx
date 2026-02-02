@@ -22,6 +22,7 @@ type PinsContextValue = {
   addPinPhoto: (pinId: string, uri: string) => Promise<void>;
   deletePinPhoto: (pinId: string, uri: string) => Promise<void>;
   clearPins: () => Promise<void>;
+  reloadPins: () => Promise<void>;
   getPin: (id: string) => Pin | undefined;
 };
 
@@ -61,8 +62,8 @@ export function PinsProvider({ children }: { children: React.ReactNode }) {
   const [pins, setPins] = useState<Pin[]>([]);
   const [isReady, setIsReady] = useState(false);
 
-    useEffect(() => {
-    (async () => {
+  const loadFromDb = async () => {
+    try {
       await initDb();
       const rows = await fetchPins();
       const photos = await fetchAllPhotos();
@@ -76,11 +77,20 @@ export function PinsProvider({ children }: { children: React.ReactNode }) {
 
       setPins(rows.map((r) => rowToPin(r, photoMap[r.id] || [])));
       setIsReady(true);
-    })().catch((e) => {
+    } catch (e) {
       console.log("DB init/load failed:", e);
-      setIsReady(true); // 일단 앱은 뜨게
-    });
+      setIsReady(true);
+    }
+  };
+
+  useEffect(() => {
+    loadFromDb();
   }, []);
+
+  const reloadPins = async () => {
+    await loadFromDb();
+  };
+
 
   
   const addPin = async (pin: Pin) => {
@@ -136,7 +146,7 @@ export function PinsProvider({ children }: { children: React.ReactNode }) {
   const getPin = (id: string) => pins.find((p) => p.id === id);
 
   const value = useMemo(
-    () => ({ pins, isReady, addPin, updatePin, addPinPhoto, deletePinPhoto, clearPins, getPin }),
+    () => ({ pins, isReady, addPin, updatePin, addPinPhoto, deletePinPhoto, clearPins, reloadPins, getPin }),
     [pins, isReady]
   );
 
