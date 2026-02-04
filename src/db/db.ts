@@ -149,7 +149,14 @@ export async function updatePinRow(id: string, patch: Partial<PinRow>): Promise<
 
 export async function deleteAllPins(): Promise<void> {
   const database = await getDb();
-  await database.runAsync(`DELETE FROM pins;`);
+  await database.runAsync("DELETE FROM pin_photos;");
+  await database.runAsync("DELETE FROM pins;");
+}
+
+export async function deletePin(id: string): Promise<void> {
+  const database = await getDb();
+  await database.runAsync(`DELETE FROM pin_photos WHERE pinId = ?;`, [id]);
+  await database.runAsync(`DELETE FROM pins WHERE id = ?;`, [id]);
 }
 
 export async function deleteAllPhotos(): Promise<void> {

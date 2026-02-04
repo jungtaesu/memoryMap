@@ -3,6 +3,7 @@ import { View, Text, SectionList, Pressable, StyleSheet, Image } from "react-nat
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePins, Pin } from "../../src/store/PinsStore";
+import { i18n } from "../../src/i18n";
 
 export default function PinList() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function PinList() {
     // 3. 지역명 없는 핀들은 '기타' 그룹으로 맨 뒤에 추가 (데이터가 있을 경우만)
     if (others.length > 0) {
       result.push({
-        title: "기타",
+        title: "Others",
         data: others.sort((a, b) => b.createdAt - a.createdAt),
       });
     }
@@ -86,7 +87,7 @@ export default function PinList() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.headerTitle}>Pin List ({pins.length})</Text>
+      <Text style={styles.headerTitle}>{i18n.t("tab_list")} ({pins.length})</Text>
       
       <SectionList
         sections={sections}

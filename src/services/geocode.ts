@@ -5,6 +5,29 @@ type Regions = {
   formattedAddress?: string;
 };
 
+export async function getCoordinatesFromAddress(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}&language=ko`;
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    if (data.status !== "OK" || !data.results?.[0]) {
+      return null;
+    }
+    
+    const location = data.results[0].geometry.location;
+    return {
+      latitude: location.lat,
+      longitude: location.lng
+    };
+  } catch (error) {
+    console.warn("Geocoding failed", error);
+    return null;
+  }
+}
+
 export async function reverseGeocodeGoogle(
   lat: number,
   lng: number,

@@ -5,6 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "MemoryMap",
   slug: "MemoryMap",
   version: "1.0.0",
+  scheme: "memorymap",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
@@ -28,6 +29,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: "#ffffff"
     },
     edgeToEdgeEnabled: true,
+    // 현재 코드에서는 갤러리만 사용하므로, 구글 플레이 정책 문제를 피하기 위해 카메라 권한을 명시적으로 차단합니다.
+    blockedPermissions: ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
+    permissions: [
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
+      "com.google.android.gms.permission.AD_ID"
+    ],
     config: {
       googleMaps: {
         apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
@@ -40,7 +48,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-sqlite",
-    "@react-native-community/datetimepicker"
+    "@react-native-community/datetimepicker",
+    [
+      "react-native-google-mobile-ads",
+      {
+        "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+        "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+      }
+    ],
+    "expo-localization"
   ],
   extra: {
     eas: {

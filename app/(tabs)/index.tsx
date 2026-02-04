@@ -1,11 +1,13 @@
-import { useMemo, useState, useEffect, Fragment } from "react";
-import { View, Text, Pressable, StyleSheet, Image, Platform } from "react-native";
+import { useMemo, useState, useEffect, Fragment, useRef } from "react";
+import { View, Text, Pressable, StyleSheet, Image, Platform, Alert, TextInput, Keyboard } from "react-native";
 import MapView, { Marker, LongPressEvent, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from "react-native-maps";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePins, Pin } from "../../src/store/PinsStore";
-import { reverseGeocodeGoogle } from "../../src/services/geocode";
+import { reverseGeocodeGoogle, getCoordinatesFromAddress } from "../../src/services/geocode";
 import { exportToZip, importFromZip } from "../../src/services/backup";
+import * as Location from "expo-location";
+import { i18n, getInitialRegion } from "../../src/i18n";
 
 const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -79,14 +81,35 @@ export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { pins, addPin, clearPins, isReady, updatePin, reloadPins } = usePins();
+  
+  const mapRef = useRef<MapView>(null);
+  const [locationPermission, setLocationPermission] = useState(false);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        // Permission to access location was denied
+        return;
+      }
+
+      setLocationPermission(true);
+      const location = await Location.getCurrentPositionAsync({});
+      if(location && mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.08,
+          longitudeDelta: 0.08,
+        });
+      }
+    })();
+  }, []);
 
   const initialRegion = useMemo(
-    () => ({
-      latitude: 37.5665,
-      longitude: 126.978,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
-    }),
+    () => getInitialRegion(),
     []
   );
 
@@ -131,19 +154,48 @@ export default function Home() {
     router.push(`/pin/${id}`);
   };
 
+  const handleSearch = async () => {
+    if(!searchText.trim()) return;
+    
+    Keyboard.dismiss();
+    const result = await getCoordinatesFromAddress(searchText, GOOGLE_KEY);
+    
+    if (result && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+      setIsSearchVisible(false);
+      setSearchText("");
+    } else {
+      Alert.alert(i18n.t("map_search_fail"), i18n.t("map_search_placeholder"));
+    }
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Map fill */}
       <View style={styles.mapContainer}>
         <MapView 
+          ref={mapRef}
           style={styles.map} 
           initialRegion={initialRegion} 
           onLongPress={onLongPress}
+          showsUserLocation={locationPermission}
+          showsMyLocationButton={locationPermission}
           showsPointsOfInterest={false} 
           showsTraffic={false}
           showsIndoors={false}
           customMapStyle={simpleMapStyle} 
           mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
+          onPress={() => {
+              if (isSearchVisible) {
+                  Keyboard.dismiss();
+                  setIsSearchVisible(false);
+              }
+          }}
         >
           {/* 1) 기본 핀 마커 */}
           {pins.map((p) => (
@@ -165,22 +217,52 @@ export default function Home() {
         </MapView>
       </View>
 
-      <View style={styles.hud}>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Pressable style={styles.btn} onPress={exportToZip}>
-            <Text style={styles.btnText}>Export</Text>
-          </Pressable>
-          <Pressable style={styles.btn} onPress={() => importFromZip(reloadPins)}>
-            <Text style={styles.btnText}>Import</Text>
+      {!isSearchVisible && (
+        <View style={styles.hud}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable style={styles.btn} onPress={exportToZip}>
+              <Text style={styles.btnText}>{i18n.t("map_export")}</Text>
+            </Pressable>
+            <Pressable style={styles.btn} onPress={() => importFromZip(reloadPins)}>
+              <Text style={styles.btnText}>{i18n.t("map_import")}</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.hudText}>{pins.length} Pins</Text>
+
+          <Pressable style={styles.btn} onPress={clearPins}>
+            <Text style={styles.btnText}>{i18n.t("map_clear")}</Text>
           </Pressable>
         </View>
+      )}
 
-        <Text style={styles.hudText}>{pins.length} Pins</Text>
-
-        <Pressable style={styles.btn} onPress={clearPins}>
-          <Text style={styles.btnText}>Clear</Text>
+      {/* Floating Search Button */}
+      {!isSearchVisible && (
+        <Pressable 
+          style={styles.searchBtn} 
+          onPress={() => setIsSearchVisible(true)}
+        >
+          <Text style={{ fontSize: 24 }}>🔍</Text>
         </Pressable>
-      </View>
+      )}
+
+      {/* Search Input Box */}
+      {isSearchVisible && (
+          <View style={[styles.searchContainer, { top: 60 }]}>
+              <TextInput 
+                  style={styles.searchInput}
+                  placeholder={i18n.t("map_search_placeholder")}
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  onSubmitEditing={handleSearch}
+                  returnKeyType="search"
+                  autoFocus
+              />
+              <Pressable style={styles.searchConfirmBtn} onPress={handleSearch}>
+                  <Text style={{fontSize: 20}}>🔍</Text>
+              </Pressable>
+          </View>
+      )}
     </View>
   );
 }
@@ -189,6 +271,47 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   mapContainer: { flex: 1 },
   map: { flex: 1 },
+  searchBtn: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  searchContainer: {
+      position: "absolute",
+      right: 20,
+      left: 20,
+      height: 50,
+      backgroundColor: "white",
+      borderRadius: 25,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 15,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+  },
+  searchInput: {
+      flex: 1,
+      height: "100%",
+      fontSize: 16,
+      marginLeft: 4,
+  },
+  searchConfirmBtn: {
+      padding: 5,
+  },
   hud: {
     position: "absolute",
     top: 60,

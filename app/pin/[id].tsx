@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert, Platform, Modal, FlatList, Dimensions, KeyboardAvoidingView, ScrollView, Keyboard } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert, Platform, Modal, FlatList, Dimensions, KeyboardAvoidingView, ScrollView, Keyboard, TouchableOpacity } from "react-native";
+import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePins } from "../../src/store/PinsStore";
 import * as ImagePicker from "expo-image-picker";
@@ -8,6 +8,8 @@ import * as ImageManipulator from "expo-image-manipulator";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ImageViewing from "react-native-image-viewing";
 import { File, Directory, Paths } from "expo-file-system";
+import { TestIds, useInterstitialAd } from 'react-native-google-mobile-ads';
+import { i18n } from "../../src/i18n";
 
 async function pickAndStorePhoto(pinId: string) {
     // 1) 갤러리에서 선택
@@ -48,7 +50,7 @@ export default function PinDetail() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { getPin, updatePin, addPinPhoto, deletePinPhoto } = usePins();
+    const { getPin, updatePin, addPinPhoto, deletePinPhoto, deletePinById } = usePins();
 
     const pin = id ? getPin(id) : undefined;
 
@@ -106,6 +108,22 @@ export default function PinDetail() {
         }
     }, [pin?.createdAt]);
 
+    const { isLoaded, isClosed, load, show } = useInterstitialAd(TestIds.INTERSTITIAL, {
+        requestNonPersonalizedAdsOnly: true,
+    });
+
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    // 광고가 닫혔을 때 실제 사진 추가 로직 실행
+    useEffect(() => {
+        if (isClosed) {
+            runAddPhoto();
+            load();
+        }
+    }, [isClosed]);
+
     if (!id) {
         return (
             <View style={styles.container}>
@@ -122,21 +140,29 @@ export default function PinDetail() {
         );
     }
 
+    const runAddPhoto = async () => {
+        try {
+            const stored = await pickAndStorePhoto(id!);
+            if (!stored) return;
+            await addPinPhoto(id!, stored);
+        } catch (e) {
+            Alert.alert(i18n.t("pin_add_photo"), "다시 시도해줘");
+            console.log(e);
+        }
+    };
+
     const onAddPhoto = async () => {
         if (photos.length >= 3) {
             Alert.alert("알림", "사진은 최대 3장까지 추가할 수 있어요.");
             return;
         }
-        try {
-            const stored = await pickAndStorePhoto(id);
-            if (!stored) return;
 
-            // addPinPhoto가 내부 setPins로 상태를 업데이트하므로
-            // useEffect가 돌면서 photos 상태도 동기화됨.
-            await addPinPhoto(id, stored);
-        } catch (e) {
-            Alert.alert("사진 추가 실패", "다시 시도해줘");
-            console.log(e);
+        // 사진이 1장 이상 있고, 광고가 준비되었다면 광고 노출
+        if (photos.length > 0 && isLoaded) {
+            show();
+        } else {
+            // 첫 번째 사진이거나 광고 로드 실패 시 바로 실행
+            await runAddPhoto();
         }
     };
 
@@ -154,12 +180,39 @@ export default function PinDetail() {
         router.back();
     };
 
+    const onDelete = () => {
+        Alert.alert(
+            i18n.t("pin_delete_confirm_title"),
+            i18n.t("pin_delete_confirm_msg"),
+            [
+                { text: i18n.t("pin_cancel"), style: "cancel" },
+                {
+                    text: i18n.t("pin_delete"),
+                    style: "destructive",
+                    onPress: async () => {
+                        await deletePinById(id!);
+                        router.back();
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0} // 헤더 높이 등을 고려한 오프셋
         >
+            <Stack.Screen
+                options={{
+                    headerRight: () => (
+                        <TouchableOpacity onPress={onDelete} style={{ padding: 8 }}>
+                            <Text style={{ color: "#ff3b30", fontSize: 16, fontWeight: "600" }}>{i18n.t("pin_delete")}</Text>
+                        </TouchableOpacity>
+                    ),
+                }}
+            />
             <ScrollView
                 ref={scrollViewRef}
                 style={{ flex: 1 }}
@@ -171,14 +224,14 @@ export default function PinDetail() {
                 }}
                 keyboardShouldPersistTaps="handled"
             >
-                <Text style={styles.title}>추억 내용</Text>
+                <Text style={styles.title}>Memory</Text>
                 <Text style={styles.sub}>{pin.region1
                     ? `${pin.region1} ${pin.region2 ?? ""} ${pin.region3 ?? ""}`
-                    : "위치 기록"}</Text>
+                    : "Unknown Location"}</Text>
 
                 <Pressable onPress={() => setShowDatePicker((prev) => !prev)}>
                     <Text style={styles.dateText}>
-                        📅 {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일
+                        📅 {date.getFullYear()}/{date.getMonth() + 1}/{date.getDate()}
                     </Text>
                 </Pressable>
 
@@ -209,7 +262,7 @@ export default function PinDetail() {
                                     <Pressable style={styles.carouselItem} onPress={onAddPhoto}>
                                         <View style={styles.addPhotoPlaceholder}>
                                             <Text style={{ fontSize: 32 }}>+</Text>
-                                            <Text style={{ marginTop: 8 }}>사진 추가</Text>
+                                            <Text style={{ marginTop: 8 }}>{i18n.t("pin_add_photo")}</Text>
                                             <Text style={{ fontSize: 12, opacity: 0.5 }}>
                                                 {photos.length}/3
                                             </Text>
@@ -226,10 +279,10 @@ export default function PinDetail() {
                                         setIsViewerOpen(true);
                                     }}
                                     onLongPress={() => {
-                                        Alert.alert("사진 삭제", "이 사진을 삭제할까요?", [
-                                            { text: "취소", style: "cancel" },
+                                        Alert.alert("Delete Photo", "Delete this photo?", [
+                                            { text: i18n.t("pin_cancel"), style: "cancel" },
                                             {
-                                                text: "삭제",
+                                                text: i18n.t("pin_delete"),
                                                 style: "destructive",
                                                 onPress: () => deletePinPhoto(id, item),
                                             },
@@ -255,18 +308,18 @@ export default function PinDetail() {
                         setInputLayoutY(event.nativeEvent.layout.y);
                     }}
                 >
-                    <Text style={styles.label}>내용</Text>
+                    <Text style={styles.label}>Memo</Text>
                     <TextInput
                         value={memo}
                         onChangeText={setMemo}
-                        placeholder="여기서 어떤 기억이었는지 한 줄만…"
+                        placeholder="..."
                         multiline
                         style={styles.input}
                     />
                 </View>
 
                 <Pressable style={styles.saveBtn} onPress={saveMemo}>
-                    <Text style={styles.saveText}>Save</Text>
+                    <Text style={styles.saveText}>{i18n.t("pin_save")}</Text>
                 </Pressable>
                 
                 {/* 스크롤 여유 공간 확보용 Spacer - 키보드가 활성화되었을 때만 표시 */}

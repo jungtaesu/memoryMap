@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { initDb, fetchPins, insertPin, updatePinRow, deleteAllPins, PinRow, fetchAllPhotos, insertPhoto, deletePhoto } from "../db/db";
+import { initDb, fetchPins, insertPin, updatePinRow, deleteAllPins, PinRow, fetchAllPhotos, insertPhoto, deletePhoto, deletePin } from "../db/db";
 
 export type Pin = {
   id: string;
@@ -21,6 +21,7 @@ type PinsContextValue = {
   updatePin: (id: string, patch: Partial<Pin>) => Promise<void>;
   addPinPhoto: (pinId: string, uri: string) => Promise<void>;
   deletePinPhoto: (pinId: string, uri: string) => Promise<void>;
+  deletePinById: (id: string) => Promise<void>;
   clearPins: () => Promise<void>;
   reloadPins: () => Promise<void>;
   getPin: (id: string) => Pin | undefined;
@@ -138,6 +139,11 @@ export function PinsProvider({ children }: { children: React.ReactNode }) {
     await deletePhoto(uri);
   };
 
+  const deletePinById = async (id: string) => {
+    setPins((prev) => prev.filter((p) => p.id !== id));
+    await deletePin(id);
+  };
+
   const clearPins = async () => {
     setPins([]);
     await deleteAllPins();
@@ -146,7 +152,7 @@ export function PinsProvider({ children }: { children: React.ReactNode }) {
   const getPin = (id: string) => pins.find((p) => p.id === id);
 
   const value = useMemo(
-    () => ({ pins, isReady, addPin, updatePin, addPinPhoto, deletePinPhoto, clearPins, reloadPins, getPin }),
+    () => ({ pins, isReady, addPin, updatePin, addPinPhoto, deletePinPhoto, deletePinById, clearPins, reloadPins, getPin }),
     [pins, isReady]
   );
 
