@@ -1,5 +1,7 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "MemoryMap",
@@ -9,21 +11,27 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
-  newArchEnabled: true,
+  newArchEnabled: false,
   splash: {
     image: "./assets/splash-icon.png",
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
   ios: {
-    bundleIdentifier: "com.taesujung.memorymap",
+    bundleIdentifier: "com.memorymap",
     supportsTablet: true,
+    googleServicesFile: "./GoogleService-Info.plist",
     config: {
-      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    },
+    infoPlist: {
+      NSLocationWhenInUseUsageDescription: "This app uses your location to show where you are on the map.",
+      UIBackgroundModes: ["location", "fetch"],
     }
   },
   android: {
-    package: "com.taesujung.memorymap",
+    package: "com.memorymap",
+    googleServicesFile: "./google-services.json",
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff"
@@ -46,6 +54,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: "./assets/favicon.png"
   },
   plugins: [
+    "./plugins/withAndroidKotlinFix.js",
+    [
+      "expo-build-properties",
+      {
+        "ios": {
+          "useFrameworks": "static"
+        }
+      }
+    ],
     "expo-router",
     "expo-sqlite",
     "@react-native-community/datetimepicker",
@@ -54,6 +71,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         "androidAppId": "ca-app-pub-3940256099942544~3347511713",
         "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+      }
+    ],
+    "@react-native-firebase/app",
+    [
+      "@react-native-seoul/kakao-login",
+      {
+        "kakaoAppKey": process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ?? "YOUR_KAKAO_NATIVE_APP_KEY"
       }
     ],
     "expo-localization"

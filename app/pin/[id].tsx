@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePins } from "../../src/store/PinsStore";
 import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
+import { compressImage } from "../../src/utils/image";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ImageViewing from "react-native-image-viewing";
 import { File, Directory, Paths } from "expo-file-system";
@@ -24,12 +24,8 @@ async function pickAndStorePhoto(pinId: string) {
     const uri = result.assets[0]?.uri;
     if (!uri) return null;
 
-    // 2) 리사이즈 (표현용)
-    const manipulated = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1280 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-    );
+    // 2) 리사이즈 (표현용) & 압축
+    const compressedUri = await compressImage(uri);
 
     // 3) 앱 폴더로 복사(영구 보관용)
     const photosDir = new Directory(Paths.document, "photos");
@@ -39,7 +35,7 @@ async function pickAndStorePhoto(pinId: string) {
 
     const filename = `${pinId}-${Date.now()}.jpg`;
     const destFile = new File(photosDir, filename);
-    const sourceFile = new File(manipulated.uri);
+    const sourceFile = new File(compressedUri);
 
     sourceFile.copy(destFile);
 

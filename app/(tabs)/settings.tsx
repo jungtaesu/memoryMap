@@ -1,13 +1,37 @@
-import { View, Text, StyleSheet, Pressable, Alert, ActionSheetIOS, Platform, Modal, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, ActionSheetIOS, Platform, Modal, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { i18n } from "../../src/i18n";
 import { useLanguage } from "../../src/store/LanguageStore";
+import { useAuth } from "../../src/store/AuthStore";
+import { syncData } from "../../src/services/SyncService";
 import { useState } from "react";
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const { locale, changeLanguage } = useLanguage();
+  const { user, signInWithGoogle, signOut } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // ... existing code ...
+
+  const handleSync = async () => {
+    if (!user) return;
+    try {
+      setIsSyncing(true);
+      await syncData(user.uid);
+      Alert.alert("동기화 완료", "소중한 추억이 클라우드에 안전하게 보관되었습니다.");
+    } catch (e: any) {
+      Alert.alert("오류", e.message || "동기화 중 오류가 발생했습니다.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleLoginPress = () => {
+      // 지금은 구글만 연결
+      signInWithGoogle();
+  };
 
   const handleLanguagePress = () => {
     const options = ["한국어", "English", "日本語", "中文", i18n.t("pin_cancel")];
@@ -41,6 +65,52 @@ export default function Settings() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{i18n.t("settings_title")}</Text>
+      </View>
+
+      {/* Account Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>계정 & 동기화 (Beta)</Text>
+        
+        {user ? (
+           <>
+              <View style={styles.item}>
+                <Text style={styles.itemIcon}>👤</Text>
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>{user.email}</Text>
+                  <Text style={styles.itemSubtitle}>로그인됨</Text>
+                </View>
+              </View>
+
+              <Pressable style={styles.item} onPress={handleSync} disabled={isSyncing}>
+                <Text style={styles.itemIcon}>☁️</Text>
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>지금 동기화</Text>
+                  <Text style={styles.itemSubtitle}>
+                      {isSyncing ? "동기화 진행 중..." : "수동으로 클라우드에 백업합니다"}
+                  </Text>
+                </View>
+                {isSyncing && <ActivityIndicator size="small" />}
+              </Pressable>
+
+              <Pressable style={styles.item} onPress={signOut}>
+                <Text style={styles.itemIcon}>🚪</Text>
+                <View style={styles.itemContent}>
+                  <Text style={[styles.itemTitle, { color: '#FF3B30' }]}>로그아웃</Text>
+                </View>
+              </Pressable>
+           </>
+        ) : (
+            <>
+             <Pressable style={styles.item} onPress={handleLoginPress}>
+                <Text style={styles.itemIcon}>G</Text>
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>구글 계정으로 로그인</Text>
+                  <Text style={styles.itemSubtitle}>로그인하여 데이터를 안전하게 보관하세요.</Text>
+                </View>
+                <Text style={styles.arrow}>›</Text>
+              </Pressable>
+            </>
+        )}
       </View>
 
       <View style={styles.section}>
