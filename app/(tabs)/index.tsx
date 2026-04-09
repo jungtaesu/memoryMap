@@ -147,6 +147,21 @@ export default function Home() {
           }).catch(console.log);
         })
         .catch(console.log);
+    } else {
+      // API Key가 없을 경우(개발/테스트 중) Expo 기본 기능으로 대체
+      Location.reverseGeocodeAsync({ latitude, longitude })
+        .then((results) => {
+          if (results.length > 0) {
+            const first = results[0];
+            updatePin(newPin.id, {
+              region1: first.region || first.adminArea || undefined,
+              region2: first.city || first.subregion || undefined,
+              region3: first.district || first.name || undefined,
+              formattedAddress: `${first.region || ''} ${first.city || ''} ${first.name || ''}`.trim(),
+            }).catch(console.log);
+          }
+        })
+        .catch(console.log);
     }
   };
 
@@ -172,6 +187,21 @@ export default function Home() {
     } else {
       Alert.alert(i18n.t("map_search_fail"), i18n.t("map_search_placeholder"));
     }
+  };
+
+  const handleClearPins = () => {
+    Alert.alert(
+      i18n.t("map_clear_confirm_title"),
+      i18n.t("map_clear_confirm_msg"),
+      [
+        { text: i18n.t("pin_cancel"), style: "cancel" },
+        {
+          text: i18n.t("pin_delete"),
+          style: "destructive",
+          onPress: () => clearPins(),
+        },
+      ]
+    );
   };
 
   return (
@@ -230,9 +260,16 @@ export default function Home() {
 
           <Text style={styles.hudText}>{pins.length} Pins</Text>
 
-          <Pressable style={styles.btn} onPress={clearPins}>
+          <Pressable style={styles.btn} onPress={handleClearPins}>
             <Text style={styles.btnText}>{i18n.t("map_clear")}</Text>
           </Pressable>
+        </View>
+      )}
+
+      {/* Empty Pins Guide */}
+      {pins.length === 0 && !isSearchVisible && (
+        <View style={styles.emptyGuide}>
+          <Text style={styles.emptyGuideText}>{i18n.t("map_empty_toast")}</Text>
         </View>
       )}
 
@@ -286,6 +323,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  emptyGuide: {
+    position: "absolute",
+    bottom: 90,
+    alignSelf: "center",
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  emptyGuideText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
   },
   searchContainer: {
       position: "absolute",

@@ -18,6 +18,9 @@ const en = {
   map_export: "Export",
   map_import: "Import",
   map_clear: "Clear",
+  map_clear_confirm_title: "Initialize Pins",
+  map_clear_confirm_msg: "Are you sure you want to delete all pins?",
+  map_empty_toast: "Long press the map to create a pin.",
   
   pin_delete_confirm_title: "Delete Pin",
   pin_delete_confirm_msg: "Are you sure you want to delete this memory?",
@@ -48,6 +51,9 @@ const ko = {
   map_export: "내보내기",
   map_import: "가져오기",
   map_clear: "초기화",
+  map_clear_confirm_title: "초기화",
+  map_clear_confirm_msg: "모든 핀을 삭제하시겠습니까?",
+  map_empty_toast: "지도를 길게 누르면 핀이 생성됩니다.",
 
   pin_delete_confirm_title: "추억 삭제",
   pin_delete_confirm_msg: "정말 이 추억을 삭제하시겠습니까?",
@@ -78,6 +84,9 @@ const ja = {
   map_export: "エクスポート",
   map_import: "インポート",
   map_clear: "クリア",
+  map_clear_confirm_title: "初期化",
+  map_clear_confirm_msg: "すべてのピンを削除してもよろしいですか？",
+  map_empty_toast: "地図を長押しするとピンが作成されます。",
 
   pin_delete_confirm_title: "削除確認",
   pin_delete_confirm_msg: "本当に削除してもよろしいですか？",
@@ -108,6 +117,9 @@ const zh = {
   map_export: "导出",
   map_import: "导入",
   map_clear: "清除",
+  map_clear_confirm_title: "初始化",
+  map_clear_confirm_msg: "确定要删除所有引脚吗？",
+  map_empty_toast: "长按地图即可创建引脚。",
 
   pin_delete_confirm_title: "删除确认",
   pin_delete_confirm_msg: "确定要删除这条记忆吗？",
