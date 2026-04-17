@@ -56,7 +56,8 @@ function BadgeMarker({ pin, onPress }: { pin: Pin; onPress: () => void }) {
     <Marker
       key={`${pin.id}-${count}`}
       coordinate={{ latitude: pin.lat, longitude: pin.lng }}
-      anchor={{ x: count < 2 ? 0.3 : 0.5, y: 1.9 }}
+      // anchor={{ x: count < 2 ? 0.3 : 0.5, y: 2.5 }}
+      anchor={{ x: 0.5, y: 2.5 }}
       onPress={onPress}
       tracksViewChanges={tracks}
       zIndex={5} 
@@ -227,13 +228,16 @@ export default function Home() {
               }
           }}
         >
-          {/* 1) 기본 핀 마커 */}
+          {/* 1) 기본 핀 마커 - 크기 조절된 커스텀 이미지 */}
           {pins.map((p) => (
             <Marker
               key={`basic-${p.id}`}
               coordinate={{ latitude: p.lat, longitude: p.lng }}
               onPress={() => goDetail(p.id)}
-            />
+              // image 대신 children으로 커스텀 마커 사용
+              image={require('../../assets/image/pin3.png')}
+            >
+            </Marker>
           ))}
 
           {/* 2) 배지 마커 (이모지) */}
@@ -365,7 +369,7 @@ const styles = StyleSheet.create({
   },
   hud: {
     position: "absolute",
-    top: 60,
+    top: 80,
     left: 16,
     right: 16,
     flexDirection: "row",
@@ -388,23 +392,22 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 12,
     padding: 4,
-    borderColor: "#ddd",
+    // borderColor: "#ddd",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    // shadowColor: "#000",
+    // shadowOpacity: 0.1,
+    // shadowRadius: 1,
   },
   badgeText: { 
     fontSize: 12, 
     lineHeight: 16,
     textAlignVertical: "center", 
-    includeFontPadding: false, 
   },
   badgeTextLeft: { 
-    marginRight: 0
+    // marginRight: 0
   },
 });

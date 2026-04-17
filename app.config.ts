@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "MemoryMap",
   slug: "MemoryMap",
-  version: "1.0.0",
+  version: "1.0.6",
   scheme: "memorymap",
   orientation: "portrait",
   icon: "./assets/icon.png",

@@ -224,7 +224,7 @@ export default function PinDetail() {
                 }}
                 keyboardShouldPersistTaps="handled"
             >
-                <Text style={styles.title}>Memory</Text>
+                <Text style={styles.title}>{i18n.t("pin_memory")}</Text>
                 <Text style={styles.sub}>{pin.region1
                     ? `${pin.region1} ${pin.region2 ?? ""} ${pin.region3 ?? ""}`
                     : "Unknown Location"}</Text>
@@ -308,7 +308,7 @@ export default function PinDetail() {
                         setInputLayoutY(event.nativeEvent.layout.y);
                     }}
                 >
-                    <Text style={styles.label}>Memo</Text>
+                    <Text style={styles.label}>{i18n.t("pin_memo")}</Text>
                     <TextInput
                         value={memo}
                         onChangeText={setMemo}

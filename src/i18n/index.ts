@@ -24,6 +24,8 @@ const en = {
   
   pin_delete_confirm_title: "Delete Pin",
   pin_delete_confirm_msg: "Are you sure you want to delete this memory?",
+  pin_memory: "Memory",
+  pin_memo: "Memo",
   pin_add_photo: "Add Photo",
   pin_save: "Save",
   pin_cancel: "Cancel",
@@ -57,6 +59,8 @@ const ko = {
 
   pin_delete_confirm_title: "추억 삭제",
   pin_delete_confirm_msg: "정말 이 추억을 삭제하시겠습니까?",
+  pin_memory: "추억",
+  pin_memo: "메모",
   pin_add_photo: "사진 추가",
   pin_save: "저장",
   pin_cancel: "취소",
@@ -90,6 +94,8 @@ const ja = {
 
   pin_delete_confirm_title: "削除確認",
   pin_delete_confirm_msg: "本当に削除してもよろしいですか？",
+  pin_memory: "思い出",
+  pin_memo: "メモ",
   pin_add_photo: "写真を追加",
   pin_save: "保存",
   pin_cancel: "キャンセル",
@@ -123,6 +129,8 @@ const zh = {
 
   pin_delete_confirm_title: "删除确认",
   pin_delete_confirm_msg: "确定要删除这条记忆吗？",
+  pin_memory: "记忆",
+  pin_memo: "备忘",
   pin_add_photo: "添加照片",
   pin_save: "保存",
   pin_cancel: "取消",
