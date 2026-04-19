@@ -34,6 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: [
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.READ_MEDIA_IMAGES",
       "com.google.android.gms.permission.AD_ID"
     ],
     config: {
@@ -48,6 +49,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-sqlite",
+    [
+      "expo-media-library",
+      {
+        "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+        "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
+        "isAccessMediaLocationEnabled": true
+      }
+    ],
     "@react-native-community/datetimepicker",
     [
       "react-native-google-mobile-ads",

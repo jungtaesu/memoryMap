@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert, Platform, Modal, FlatList, Dimensions, KeyboardAvoidingView, ScrollView, Keyboard, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert, Platform, Modal, FlatList, Dimensions, KeyboardAvoidingView, ScrollView, Keyboard, TouchableOpacity, Linking } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePins } from "../../src/store/PinsStore";
@@ -10,6 +10,8 @@ import ImageViewing from "react-native-image-viewing";
 import { File, Directory, Paths } from "expo-file-system";
 import { TestIds, useInterstitialAd } from 'react-native-google-mobile-ads';
 import { i18n } from "../../src/i18n";
+import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 
 async function pickAndStorePhoto(pinId: string) {
     // 1) 갤러리에서 선택
@@ -17,33 +19,50 @@ async function pickAndStorePhoto(pinId: string) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 1,
         allowsEditing: false,
+        exif: true,
     });
 
     if (result.canceled) return null;
 
-    const uri = result.assets[0]?.uri;
-    if (!uri) return null;
+    const picked = result.assets[0];
+    if (!picked?.uri) return null;
+
+    // 원본 사진 촬영 날짜 조회 (exif → assetId → fallback 순서)
+    let dateTaken = Date.now();
+    const exifDate: string | undefined = picked.exif?.DateTimeOriginal ?? picked.exif?.DateTime;
+    if (exifDate) {
+        // exif 형식: "YYYY:MM:DD HH:MM:SS"
+        const normalized = exifDate.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+        const parsed = Date.parse(normalized);
+        if (!isNaN(parsed)) dateTaken = parsed;
+    } else if (picked.assetId) {
+        try {
+            const info = await MediaLibrary.getAssetInfoAsync(picked.assetId);
+            dateTaken = info.creationTime;
+        } catch (_) { /* fallback */ }
+    }
 
     // 2) 리사이즈 (표현용)
     const manipulated = await ImageManipulator.manipulateAsync(
-        uri,
+        picked.uri,
         [{ resize: { width: 1280 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
     );
 
     // 3) 앱 폴더로 복사(영구 보관용)
+    // 파일명: {pinId}-{dateTaken}-{savedAt}.jpg  (dateTaken = 원본 촬영 ms 타임스탬프)
     const photosDir = new Directory(Paths.document, "photos");
     if (!photosDir.exists) {
         photosDir.create();
     }
 
-    const filename = `${pinId}-${Date.now()}.jpg`;
+    const filename = `${pinId}-${dateTaken}-${Date.now()}.jpg`;
     const destFile = new File(photosDir, filename);
     const sourceFile = new File(manipulated.uri);
 
     sourceFile.copy(destFile);
 
-    return destFile.uri; // 이 경로를 pin에 저장
+    return destFile.uri;
 }
 
 export default function PinDetail() {
@@ -140,6 +159,28 @@ export default function PinDetail() {
         );
     }
 
+    // 권한 요청 함수
+    const requestPhotoPermission = async (): Promise<boolean> => {
+        // expo-image-picker 권한 (갤러리 선택용)
+        const { status: pickerStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        // expo-media-library 권한 (같은 날 사진 조회용) - Android 13+는 granularPermissions 필요
+        const { status: mediaStatus, canAskAgain } = await MediaLibrary.requestPermissionsAsync();
+        if (mediaStatus !== 'granted') {
+            if (!canAskAgain) {
+                Alert.alert(
+                    '권한 필요',
+                    '사진 접근 권한이 거부되었습니다. 설정에서 직접 허용해주세요.',
+                    [
+                        { text: '취소', style: 'cancel' },
+                        { text: '설정 열기', onPress: () => Linking.openSettings() },
+                    ]
+                );
+            }
+            return false;
+        }
+        return pickerStatus === 'granted';
+    };
+
     const runAddPhoto = async () => {
         try {
             const stored = await pickAndStorePhoto(id!);
@@ -178,6 +219,92 @@ export default function PinDetail() {
     const saveMemo = () => {
         updatePin(id, { memo, createdAt: date.getTime() });
         router.back();
+    };
+
+    // 외부 갤러리 열기 핸들러
+    const onOpenInGallery = async () => {
+        if (photos.length === 0) {
+            Alert.alert('알림', '표시할 사진이 없습니다.');
+            return;
+        }
+        try {
+            await Sharing.shareAsync(photos[0], {
+                mimeType: 'image/jpeg',
+                dialogTitle: '사진 열기',
+            });
+        } catch (e) {
+            Alert.alert('오류', '갤러리를 열 수 없습니다.');
+        }
+    };
+
+    // 같은 날 사진 보기 핸들러
+    const onViewSameDayPhotos = async () => {
+        const hasPermission = await requestPhotoPermission();
+        if (!hasPermission) {
+            Alert.alert('권한 필요', '권한 허용 시 같은 날 사진을 볼 수 있어요.');
+            return;
+        }
+
+        // 대표 사진 = photos[0] (첫 번째 사진)
+        console.log('[SameDay] 대표 사진(photos[0]):', photos[0] ?? '없음');
+
+        // 대표 사진 파일명에서 촬영 날짜 추출
+        // 신규 형식: {pinId(time-hex)}-{dateTaken}-{savedAt}.jpg → parts[parts.length-2]
+        // 구형 형식: {pinId(time-hex)}-{savedAt}.jpg → fallback to pin.createdAt
+        let baseTime = pin.createdAt;
+        let baseSource = 'pin.createdAt (fallback)';
+        if (photos[0]) {
+            const filename = photos[0].split('/').pop()?.replace('.jpg', '') ?? '';
+            const parts = filename.split('-');
+            console.log('[SameDay] 파일명 parts:', parts, '| length:', parts.length);
+            if (parts.length >= 4) {
+                // 신규 형식: time - hex - dateTaken - savedAt
+                const dateTaken = parseInt(parts[parts.length - 2], 10);
+                if (!isNaN(dateTaken) && dateTaken > 0) {
+                    baseTime = dateTaken;
+                    baseSource = '파일명 dateTaken';
+                }
+            }
+        }
+        console.log('[SameDay] baseTime 출처:', baseSource);
+        console.log('[SameDay] baseTime:', baseTime, '| ISO:', new Date(baseTime).toISOString());
+        console.log('[SameDay] baseTime KST:', new Date(baseTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }));
+
+        // 대표 사진 촬영일 기준 하루 범위 (로컬 시간 기준 00:00 ~ 23:59)
+        const base = new Date(baseTime);
+        const startOfDay = new Date(base);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(base);
+        endOfDay.setHours(23, 59, 59, 999);
+        console.log('[SameDay] startOfDay:', startOfDay.toISOString(), '| endOfDay:', endOfDay.toISOString());
+
+        try {
+            const { assets } = await MediaLibrary.getAssetsAsync({
+                mediaType: MediaLibrary.MediaType.photo,
+                createdAfter: startOfDay.getTime(),
+                createdBefore: endOfDay.getTime(),
+                sortBy: MediaLibrary.SortBy.creationTime,
+                first: 100,
+            });
+            console.log('[SameDay] 조회된 assets 수:', assets.length);
+
+            if (assets.length === 0) {
+                Alert.alert('사진 없음', '같은 날 찍은 사진이 없어요.');
+                return;
+            }
+
+            const photoList = assets.map(asset => ({ uri: asset.uri, dateTaken: asset.creationTime }));
+            router.push({
+                pathname: '/same-day-photos',
+                params: {
+                    photos: JSON.stringify(photoList),
+                    date: pin.createdAt.toString(),
+                },
+            });
+        } catch (e) {
+            Alert.alert('오류', '사진을 불러오는 중 오류가 발생했습니다.');
+            console.log(e);
+        }
     };
 
     const onDelete = () => {
@@ -301,6 +428,16 @@ export default function PinDetail() {
                     />
                 </View>
 
+                <View style={styles.card}>
+                    <Text style={styles.label}>추가 기능</Text>
+                    <Pressable style={styles.button} onPress={onViewSameDayPhotos}>
+                        <Text style={styles.buttonText}>같은 날 사진 보기</Text>
+                    </Pressable>
+                    <Pressable style={styles.button} onPress={onOpenInGallery}>
+                        <Text style={styles.buttonText}>기기 갤러리에서 열기</Text>
+                    </Pressable>
+                </View>
+
                 <View 
                     style={styles.card} 
                     onLayout={(event) => {
@@ -397,4 +534,13 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     saveText: { color: "white", fontWeight: "700", fontSize: 16 },
+    button: {
+        backgroundColor: "#f0f0f0",
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        marginVertical: 4,
+        alignItems: "center",
+    },
+    buttonText: { fontSize: 16, fontWeight: "600" },
 });

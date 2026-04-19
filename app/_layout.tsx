@@ -8,7 +8,7 @@ export default function RootLayout() {
       <PinsProvider>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="pin/[id]" options={{ title: "" }} />
+          <Stack.Screen name="same-day-photos" options={{ title: "같은 날 사진" }} />
         </Stack>
       </PinsProvider>
     </LanguageProvider>
