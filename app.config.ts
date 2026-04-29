@@ -4,14 +4,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "MemoryMap",
   slug: "MemoryMap",
-  version: "1.0.6",
+  version: "1.0.10",
   scheme: "memorymap",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
   newArchEnabled: true,
   splash: {
-    image: "./assets/splash-icon.png",
+    image: "./assets/icon.png",
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
@@ -25,7 +25,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: "com.taesujung.memorymap",
     adaptiveIcon: {
-      foregroundImage: "./assets/adaptive-icon.png",
+      foregroundImage: "./assets/icon.png",
       backgroundColor: "#ffffff"
     },
     edgeToEdgeEnabled: true,
@@ -44,7 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     }
   },
   web: {
-    favicon: "./assets/favicon.png"
+    favicon: "./assets/icon.png"
   },
   plugins: [
     "expo-router",

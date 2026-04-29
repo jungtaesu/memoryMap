@@ -30,6 +30,10 @@ const en = {
   pin_save: "Save",
   pin_cancel: "Cancel",
   pin_delete: "Delete",
+  pin_main_photo: "Main",
+  pin_extra_features: "More",
+  pin_same_day_photos: "View Same Day Photos",
+  pin_share_main_photo: "Share Main Photo",
 
   lang_ko: "Korean",
   lang_en: "English",
@@ -65,6 +69,10 @@ const ko = {
   pin_save: "저장",
   pin_cancel: "취소",
   pin_delete: "삭제",
+  pin_main_photo: "대표",
+  pin_extra_features: "추가 기능",
+  pin_same_day_photos: "같은 날 사진 더보기",
+  pin_share_main_photo: "대표 사진 공유",
 
   lang_ko: "한국어",
   lang_en: "영어",
@@ -100,6 +108,10 @@ const ja = {
   pin_save: "保存",
   pin_cancel: "キャンセル",
   pin_delete: "削除",
+  pin_main_photo: "代表",
+  pin_extra_features: "追加機能",
+  pin_same_day_photos: "同じ日の写真を見る",
+  pin_share_main_photo: "代表写真を共有",
 
   lang_ko: "韓国語",
   lang_en: "英語",
@@ -135,6 +147,10 @@ const zh = {
   pin_save: "保存",
   pin_cancel: "取消",
   pin_delete: "删除",
+  pin_main_photo: "封面",
+  pin_extra_features: "更多功能",
+  pin_same_day_photos: "查看同天照片",
+  pin_share_main_photo: "分享封面照片",
   
   lang_ko: "韩语",
   lang_en: "英语",

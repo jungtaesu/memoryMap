@@ -333,6 +333,7 @@ export default function PinDetail() {
         >
             <Stack.Screen
                 options={{
+                    headerTitle: "",
                     headerRight: () => (
                         <TouchableOpacity onPress={onDelete} style={{ padding: 8 }}>
                             <Text style={{ color: "#ff3b30", fontSize: 16, fontWeight: "600" }}>{i18n.t("pin_delete")}</Text>
@@ -417,6 +418,11 @@ export default function PinDetail() {
                                     }}
                                 >
                                     <Image source={{ uri: item }} style={styles.carouselImage} />
+                                    {index === 0 && (
+                                        <View style={styles.mainBadge}>
+                                            <Text style={styles.mainBadgeText}>{i18n.t("pin_main_photo")}</Text>
+                                        </View>
+                                    )}
                                     <View style={styles.pageIndicator}>
                                         <Text style={styles.pageIndicatorText}>
                                             {index + 1}/{photos.length}
@@ -429,12 +435,12 @@ export default function PinDetail() {
                 </View>
 
                 <View style={styles.card}>
-                    <Text style={styles.label}>추가 기능</Text>
+                    <Text style={styles.label}>{i18n.t("pin_extra_features")}</Text>
                     <Pressable style={styles.button} onPress={onViewSameDayPhotos}>
-                        <Text style={styles.buttonText}>같은 날 사진 보기</Text>
+                        <Text style={styles.buttonText}>{i18n.t("pin_same_day_photos")}</Text>
                     </Pressable>
                     <Pressable style={styles.button} onPress={onOpenInGallery}>
-                        <Text style={styles.buttonText}>기기 갤러리에서 열기</Text>
+                        <Text style={styles.buttonText}>{i18n.t("pin_share_main_photo")}</Text>
                     </Pressable>
                 </View>
 
@@ -534,6 +540,20 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     saveText: { color: "white", fontWeight: "700", fontSize: 16 },
+    mainBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        backgroundColor: 'rgba(0,0,0,0.75)',
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    mainBadgeText: {
+        color: 'white',
+        fontSize: 11,
+        fontWeight: '700',
+    },
     button: {
         backgroundColor: "#f0f0f0",
         paddingVertical: 12,

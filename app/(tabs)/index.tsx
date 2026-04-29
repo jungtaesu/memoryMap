@@ -57,10 +57,10 @@ function BadgeMarker({ pin, onPress }: { pin: Pin; onPress: () => void }) {
       key={`${pin.id}-${count}`}
       coordinate={{ latitude: pin.lat, longitude: pin.lng }}
       // anchor={{ x: count < 2 ? 0.3 : 0.5, y: 2.5 }}
-      anchor={{ x: 0.5, y: 2.5 }}
+      anchor={{ x: 0.5, y: 1.5 }}
       onPress={onPress}
       tracksViewChanges={tracks}
-      zIndex={5} 
+      zIndex={5}
     >
       {/* <View style={styles.markerContainer} collapsable={false}> */}
         <View style={styles.badge} collapsable={false}>
@@ -398,6 +398,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
     elevation: 2,
+    width: 38,
     // shadowColor: "#000",
     // shadowOpacity: 0.1,
     // shadowRadius: 1,
